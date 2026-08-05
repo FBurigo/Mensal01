@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Estante, um gerenciador simples para organizar sua biblioteca pessoal."
+    />
+    <title>Estante — Biblioteca pessoal</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Estante, página inicial">
+        <span class="brand-mark" aria-hidden="true">E</span>
+        <span>
+          <strong>Estante</strong>
+          <small>Biblioteca pessoal</small>
+        </span>
+      </a>
+      <button class="button button-primary" id="new-book" type="button">
+        <span aria-hidden="true">＋</span> Adicionar livro
+      </button>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="hero-title">
+        <div>
+          <p class="eyebrow">Sua coleção, do seu jeito</p>
+          <h1 id="hero-title">Histórias que você guarda.<br />Leituras que ainda virão.</h1>
+          <p class="hero-copy">
+            Organize seus livros, acompanhe o que está lendo e nunca perca a
+            próxima boa história.
+          </p>
+        </div>
+        <div class="hero-decoration" aria-hidden="true">
+          <span class="book book-one"></span>
+          <span class="book book-two"></span>
+          <span class="book book-three"></span>
+        </div>
+      </section>
+
+      <section class="stats" aria-label="Resumo da biblioteca">
+        <article>
+          <span class="stat-icon stat-all" aria-hidden="true">▤</span>
+          <div><strong id="stat-total">0</strong><span>Total de livros</span></div>
+        </article>
+        <article>
+          <span class="stat-icon stat-reading" aria-hidden="true">◐</span>
+          <div><strong id="stat-reading">0</strong><span>Lendo agora</span></div>
+        </article>
+        <article>
+          <span class="stat-icon stat-read" aria-hidden="true">✓</span>
+          <div><strong id="stat-read">0</strong><span>Livros concluídos</span></div>
+        </article>
+      </section>
+
+      <section class="library" aria-labelledby="library-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Minha coleção</p>
+            <h2 id="library-title">Todos os livros</h2>
+          </div>
+          <div class="filters">
+            <label class="search-field">
+              <span class="sr-only">Buscar por título ou autor</span>
+              <span aria-hidden="true">⌕</span>
+              <input id="search" type="search" placeholder="Buscar título ou autor" />
+            </label>
+            <label>
+              <span class="sr-only">Filtrar por situação</span>
+              <select id="status-filter">
+                <option value="">Todos os status</option>
+                <option value="QUERO_LER">Quero ler</option>
+                <option value="LENDO">Lendo</option>
+                <option value="LIDO">Lido</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div id="loading" class="message-card">Carregando sua estante…</div>
+        <div id="book-grid" class="book-grid" aria-live="polite"></div>
+        <div id="empty-state" class="empty-state" hidden>
+          <span aria-hidden="true">⌑</span>
+          <h3>Sua estante está esperando</h3>
+          <p>Adicione o primeiro livro ou altere os filtros da busca.</p>
+          <button class="button button-primary" id="empty-add" type="button">
+            Adicionar primeiro livro
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="book-dialog" aria-labelledby="dialog-title">
+      <form id="book-form" method="dialog">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow">Minha estante</p>
+            <h2 id="dialog-title">Adicionar livro</h2>
+          </div>
+          <button class="icon-button" id="close-dialog" type="button" aria-label="Fechar">×</button>
+        </div>
+
+        <input id="book-id" type="hidden" />
+        <div class="form-grid">
+          <label class="full-field">
+            Título <span aria-hidden="true">*</span>
+            <input id="title" name="title" maxlength="160" required />
+          </label>
+          <label>
+            Autor <span aria-hidden="true">*</span>
+            <input id="author" name="author" maxlength="120" required />
+          </label>
+          <label>
+            Categoria <span aria-hidden="true">*</span>
+            <input id="category" name="category" maxlength="80" value="Geral" required />
+          </label>
+          <label>
+            ISBN
+            <input id="isbn" name="isbn" maxlength="20" inputmode="numeric" />
+          </label>
+          <label>
+            Situação
+            <select id="reading-status" name="reading_status">
+              <option value="QUERO_LER">Quero ler</option>
+              <option value="LENDO">Lendo</option>
+              <option value="LIDO">Lido</option>
+            </select>
+          </label>
+          <label>
+            Avaliação
+            <select id="rating" name="rating">
+              <option value="">Sem avaliação</option>
+              <option value="1">1 estrela</option>
+              <option value="2">2 estrelas</option>
+              <option value="3">3 estrelas</option>
+              <option value="4">4 estrelas</option>
+              <option value="5">5 estrelas</option>
+            </select>
+          </label>
+          <label class="full-field">
+            Anotações
+            <textarea id="notes" name="notes" maxlength="2000" rows="4"></textarea>
+          </label>
+        </div>
+        <p class="form-error" id="form-error" role="alert"></p>
+        <div class="dialog-actions">
+          <button class="button button-secondary" id="cancel-dialog" type="button">Cancelar</button>
+          <button class="button button-primary" id="save-book" type="submit">Salvar livro</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <footer>
+      <span>Estante</span> · Projeto acadêmico de Cloud Computing
+    </footer>
+  </body>
+</html>

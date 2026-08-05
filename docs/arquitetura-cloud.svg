@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Arquitetura Cloud do Estante</title>
+  <desc id="desc">Navegador acessa uma VM do Google Compute Engine. Dentro dela, containers separados de frontend Nginx, backend FastAPI e MySQL se comunicam por redes privadas.</desc>
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#18372c" flood-opacity=".12"/></filter>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0,0 L12,6 L0,12 z" fill="#215c4a"/></marker>
+    <style>
+      .sans{font-family:Inter,Arial,sans-serif}.serif{font-family:Georgia,serif}.label{font-size:24px;font-weight:700;fill:#202722}.small{font-size:18px;fill:#667068}.tiny{font-size:15px;fill:#667068}.card{fill:#fffdf8;stroke:#d7dbd4;stroke-width:2}.arrow{stroke:#215c4a;stroke-width:4;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1600" height="900" fill="#f7f4ed"/>
+  <text x="80" y="70" class="serif" font-size="40" fill="#202722">Estante — Arquitetura Cloud</text>
+  <text x="80" y="105" class="sans small">Três serviços separados em uma única VM para a primeira entrega</text>
+
+  <rect x="55" y="310" width="240" height="180" rx="24" class="card" filter="url(#shadow)"/>
+  <circle cx="175" cy="360" r="32" fill="#dce9df"/>
+  <path d="M150 353h50v31h-50z M160 393h30" fill="none" stroke="#215c4a" stroke-width="5" stroke-linecap="round"/>
+  <text x="175" y="430" text-anchor="middle" class="sans label">Navegador</text>
+  <text x="175" y="462" text-anchor="middle" class="sans small">Avaliador</text>
+
+  <path d="M295 400 H425" class="arrow"/>
+  <text x="360" y="374" text-anchor="middle" class="sans tiny">HTTP :80</text>
+  <text x="360" y="428" text-anchor="middle" class="sans tiny">único acesso público</text>
+
+  <rect x="420" y="150" width="1120" height="650" rx="34" fill="#edf2ec" stroke="#94a99e" stroke-width="3"/>
+  <rect x="455" y="176" width="430" height="62" rx="16" fill="#215c4a"/>
+  <text x="480" y="216" class="sans" font-size="24" font-weight="700" fill="white">Google Compute Engine · VM Ubuntu</text>
+  <text x="1510" y="207" text-anchor="end" class="sans tiny">VPC + regra de firewall</text>
+
+  <rect x="480" y="285" width="285" height="245" rx="22" class="card" filter="url(#shadow)"/>
+  <rect x="505" y="310" width="235" height="50" rx="12" fill="#bd694e"/>
+  <text x="622" y="343" text-anchor="middle" class="sans" font-size="21" font-weight="700" fill="white">FRONTEND</text>
+  <text x="622" y="405" text-anchor="middle" class="sans label">Nginx</text>
+  <text x="622" y="440" text-anchor="middle" class="sans small">HTML · CSS · JavaScript</text>
+  <text x="622" y="475" text-anchor="middle" class="sans tiny">serve a SPA e encaminha /api</text>
+  <text x="622" y="504" text-anchor="middle" class="sans tiny">rede: edge · porta pública: 80</text>
+
+  <path d="M765 405 H920" class="arrow"/>
+  <text x="842" y="378" text-anchor="middle" class="sans tiny">JSON / REST</text>
+  <text x="842" y="435" text-anchor="middle" class="sans tiny">rede edge :8000</text>
+
+  <rect x="915" y="285" width="285" height="245" rx="22" class="card" filter="url(#shadow)"/>
+  <rect x="940" y="310" width="235" height="50" rx="12" fill="#215c4a"/>
+  <text x="1057" y="343" text-anchor="middle" class="sans" font-size="21" font-weight="700" fill="white">BACKEND</text>
+  <text x="1057" y="405" text-anchor="middle" class="sans label">FastAPI</text>
+  <text x="1057" y="440" text-anchor="middle" class="sans small">API REST · validação</text>
+  <text x="1057" y="475" text-anchor="middle" class="sans tiny">Alembic · health check</text>
+  <text x="1057" y="504" text-anchor="middle" class="sans tiny">redes: edge + data · sem porta pública</text>
+
+  <path d="M1200 405 H1325" class="arrow"/>
+  <text x="1262" y="378" text-anchor="middle" class="sans tiny">SQL</text>
+  <text x="1262" y="435" text-anchor="middle" class="sans tiny">rede data :3306</text>
+
+  <rect x="1320" y="285" width="180" height="245" rx="22" class="card" filter="url(#shadow)"/>
+  <rect x="1340" y="310" width="140" height="50" rx="12" fill="#dcae55"/>
+  <text x="1410" y="343" text-anchor="middle" class="sans" font-size="19" font-weight="700" fill="#202722">DATABASE</text>
+  <ellipse cx="1410" cy="405" rx="47" ry="18" fill="#dce9df" stroke="#215c4a" stroke-width="3"/>
+  <path d="M1363 405v54c0 10 21 18 47 18s47-8 47-18v-54" fill="#dce9df" stroke="#215c4a" stroke-width="3"/>
+  <text x="1410" y="500" text-anchor="middle" class="sans tiny">MySQL 8.4</text>
+
+  <path d="M1410 530 V625" class="arrow"/>
+  <rect x="1265" y="625" width="290" height="110" rx="18" fill="#f2e7c9" stroke="#dcae55" stroke-width="2"/>
+  <text x="1410" y="670" text-anchor="middle" class="sans label">Volume persistente</text>
+  <text x="1410" y="703" text-anchor="middle" class="sans small">mysql_data</text>
+
+  <rect x="480" y="605" width="650" height="130" rx="20" fill="#fffdf8" stroke="#d7dbd4" stroke-width="2"/>
+  <text x="510" y="646" class="sans label">Separação de rede</text>
+  <circle cx="520" cy="681" r="9" fill="#bd694e"/><text x="540" y="688" class="sans small">edge: frontend ↔ backend</text>
+  <circle cx="810" cy="681" r="9" fill="#215c4a"/><text x="830" y="688" class="sans small">data: backend ↔ banco (interna)</text>
+  <text x="510" y="718" class="sans tiny">O frontend não acessa a rede do banco. Backend e MySQL não publicam portas.</text>
+
+  <text x="80" y="845" class="sans small">Sem Load Balancer nesta etapa: uma única VM e foco em custo, clareza e funcionamento.</text>
+</svg>
