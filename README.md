@@ -96,6 +96,23 @@ Os testes cobrem o ciclo REST completo, conflito de ISBN, validação de nota e
 conexão com o banco. No ambiente real, valide também a persistência reiniciando
 os containers, conforme [docs/EVIDENCIAS.md](docs/EVIDENCIAS.md).
 
+## Teste de ponta a ponta da API (Windows)
+
+Com os três containers no ar (`docker compose up -d`), `test-api.bat` valida a
+API real (não a de testes unitários) direto pelo HTTP: Swagger, health check,
+ciclo CRUD completo, ISBN duplicado e rejeição de dados inválidos.
+
+```powershell
+.\test-api.bat
+```
+
+Gera `relatorio-testes-api.md` na raiz do projeto, com o resumo dos testes, o
+log de requisição/resposta de cada um e o log bruto completo da execução —
+serve como evidência para o cartão "Finalizar backend e banco MySQL" do
+[Kanban](docs/KANBAN.md). O script (`test-api.ps1`) é seguro para rodar mais
+de uma vez: usa um sufixo com data/hora nos ISBNs de teste e apaga os livros
+que cria.
+
 ## Documentos da entrega
 
 - [Arquitetura e decisões técnicas](docs/ARQUITETURA.md)
@@ -108,3 +125,4 @@ os containers, conforme [docs/EVIDENCIAS.md](docs/EVIDENCIAS.md).
 
 Antes da entrega, substitua os campos `NOME DO ...` nos documentos, inclua os
 links reais e atualize o relatório com o estado verdadeiro do grupo.
+
