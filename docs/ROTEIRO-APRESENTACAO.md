@@ -2,28 +2,28 @@
 
 ## Divisão sugerida
 
-### Product Owner — produto e escopo
+### Felipe Burigo — Product Owner, produto e escopo
 
 - problema resolvido e público;
 - funcionalidades priorizadas e critérios de aceite;
 - demonstração do fluxo principal;
 - o que ficou fora desta primeira entrega.
 
-### Dev 2 — frontend e integração
+### Eduardo — Dev 2, frontend e integração
 
 - organização da interface e responsividade;
 - consumo dos métodos REST;
 - Nginx, proxy `/api` e tratamento de erros;
 - evidências e testes de tela.
 
-### Dev 1 — backend, banco e containers
+### Felipe Vidal — Dev 1, backend, banco e containers
 
 - endpoints, códigos HTTP e validações;
 - MySQL, migration, volume e prova de persistência;
 - separação dos três containers e das redes;
 - health checks, logs e comandos de diagnóstico.
 
-### Bruno — Scrum Master, Cloud e processo
+### Bruno de Oliveira — Scrum Master, Cloud e processo
 
 - arquitetura no GCP e justificativas;
 - segurança, limitações e melhorias;

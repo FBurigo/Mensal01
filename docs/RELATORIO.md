@@ -1,16 +1,15 @@
 # Relatório de andamento do projeto Estante
 
-> Atualizar este documento na véspera da entrega. Não marcar como concluído o
-> que ainda não foi validado pela equipe no ambiente Cloud.
+Este relatório registra o estado validado da primeira entrega em Cloud.
 
 ## 1. Identificação da equipe
 
 | Integrante | Papel principal | Responsabilidades |
 |---|---|---|
 | Bruno de Oliveira | Scrum Master | processo, impedimentos, Kanban, riscos, apresentação e entrega |
-| NOME DO PO | Product Owner | visão, prioridades, critérios de aceite e validação |
-| NOME DO DEV 1 | Desenvolvedor Backend/Database | API, MySQL, migrations, testes e deploy |
-| NOME DO DEV 2 | Desenvolvedor Frontend/Integração | interface, integração REST, Nginx, testes de tela e evidências |
+| Felipe Burigo | Product Owner | visão, prioridades, critérios de aceite e validação |
+| Felipe Vidal | Desenvolvedor Backend/Database | API, MySQL, migrations, testes e deploy |
+| Eduardo | Desenvolvedor Frontend/Integração | interface, integração REST, Nginx, testes de tela e evidências |
 
 O grupo trabalha de forma colaborativa: os responsáveis lideram seus itens, mas
 revisões, testes e conhecimento da arquitetura são compartilhados.
@@ -35,15 +34,21 @@ acessível pelo navegador e publicada em Cloud.
 - containers separados para frontend, backend e database;
 - testes automatizados do ciclo REST.
 
-## 4. Em desenvolvimento ou aguardando validação
+## 4. Funcionalidades e infraestrutura concluídas
 
-- execução dos testes automatizados no computador de um integrante;
-- validação integrada dos três containers com Docker Compose;
-- publicação na VM do Google Compute Engine;
-- configuração final de firewall e variáveis secretas;
-- teste de persistência após reinício no ambiente Cloud;
-- produção de prints/vídeo e criação do quadro na ferramenta escolhida;
-- ensaio técnico com os quatro integrantes.
+- testes automatizados da API executados com 14 de 14 verificações aprovadas;
+- integração executada com 8 de 8 verificações aprovadas;
+- três containers separados e saudáveis pelo Docker Compose;
+- aplicação publicada e acessível pelo IP externo da VM;
+- frontend e Swagger acessíveis pelo navegador;
+- endpoint `/api/health` confirmando API ativa e banco conectado;
+- somente a porta 80 publicada, mantendo backend e MySQL sem portas externas;
+- CRUD validado pelo navegador;
+- persistência validada após reinício dos containers;
+- prints e vídeo de evidência armazenados no repositório.
+
+Permanece como atividade organizacional o ensaio técnico final com todos os
+integrantes e a conferência dos links enviados na Blackboard.
 
 ## 5. Dificuldades encontradas
 
@@ -53,6 +58,8 @@ acessível pelo navegador e publicada em Cloud.
   persistência de forma completa;
 - coordenar atividades para que o histórico do Kanban represente trabalho real;
 - planejar publicação em uma VM com memória limitada.
+- sincronizar a inicialização do backend com o momento em que o MySQL passa a
+  aceitar conexões durante a primeira subida dos containers.
 
 Soluções adotadas: containers independentes, duas redes Docker, apenas o Nginx
 público, stack leve em Python/JavaScript, health checks e escopo sem autenticação
@@ -60,28 +67,29 @@ ou funcionalidades secundárias nesta entrega.
 
 ## 6. Próximos passos
 
-1. todos revisarem o repositório e criarem os cartões do Kanban;
-2. executar testes, corrigir defeitos encontrados e registrar evidências;
-3. publicar os três serviços na VM e validar a URL externamente;
-4. executar e gravar o teste de persistência;
-5. revisar arquitetura, segurança, limitações e Scrum em grupo;
-6. concluir evidências, relatório e checklist da Blackboard;
-7. planejar HTTPS, autenticação, backup e CI/CD para a próxima etapa.
+1. concluir o histórico real dos cartões restantes no Kanban;
+2. conferir os links e arquivos enviados na Blackboard;
+3. ensaiar arquitetura, segurança, limitações e Scrum com todo o grupo;
+4. manter a VM disponível durante o período de avaliação;
+5. planejar HTTPS, autenticação, backup automatizado e CI/CD para a próxima etapa.
 
 ## 7. Estado da infraestrutura
 
 - Cloud escolhida: Google Cloud Platform;
-- computação planejada: uma VM do Compute Engine;
+- computação publicada: uma VM do Compute Engine;
 - orquestração local: Docker Compose;
 - componentes: Nginx/frontend, FastAPI/backend e MySQL/database;
 - persistência: volume `mysql_data`;
 - balanceador: não utilizado nesta etapa;
 - CI/CD: fora do escopo desta entrega, conforme o enunciado.
+- endereço público validado: `http://35.238.205.240/`;
+- limitações conhecidas: VM única, HTTP e aplicação sem autenticação.
 
 ## 8. Links da entrega
 
-- Repositório Git: `PREENCHER`
-- Aplicação publicada: `PREENCHER`
-- Quadro Kanban: `PREENCHER`
-- Evidências/vídeo: `PREENCHER`
-- Documento e diagrama: disponíveis na pasta `docs/` do repositório
+- Repositório Git: <https://github.com/FBurigo/Mensal01>
+- Aplicação publicada: <http://35.238.205.240/>
+- Quadro Kanban: <https://github.com/users/FBurigo/projects/2>
+- Evidências/vídeo: <https://github.com/FBurigo/Mensal01/tree/main/docs/evidencias>
+- Documento técnico: <https://github.com/FBurigo/Mensal01/blob/main/docs/ARQUITETURA.md>
+- Diagrama: <https://github.com/FBurigo/Mensal01/blob/main/docs/arquitetura-cloud.svg>
