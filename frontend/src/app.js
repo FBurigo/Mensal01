@@ -76,7 +76,7 @@ function renderBooks() {
   document.querySelectorAll("[data-delete]").forEach((button) =>
     button.addEventListener("click", () => removeBook(Number(button.dataset.delete)))
   );
-  document.querySelectorAll("[data-status]").forEach((select) =>
+  document.querySelectorAll(".status-select").forEach((select) =>
     select.addEventListener("change", () => changeStatus(Number(select.dataset.status), select.value))
   );
 }
