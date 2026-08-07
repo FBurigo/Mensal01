@@ -96,6 +96,31 @@ Os testes cobrem o ciclo REST completo, conflito de ISBN, validação de nota e
 conexão com o banco. No ambiente real, valide também a persistência reiniciando
 os containers, conforme [docs/EVIDENCIAS.md](docs/EVIDENCIAS.md).
 
+## Testes de ponta a ponta (Windows, Linux e macOS)
+
+Com os três containers no ar (`docker compose up -d`), dois scripts em Python
+puro (sem dependências extras) validam a aplicação real pelo HTTP e pelo
+Docker — funcionam em qualquer sistema operacional com Python 3.7+:
+
+```bash
+python3 test_api.py          # valida a API: Swagger, health check, CRUD
+                              # completo, ISBN duplicado, dados inválidos
+python3 test_integracao.py   # valida redes, proxy /api, health checks e
+                              # volume/persistência (reinicia os containers)
+```
+
+(no Windows, use `python` em vez de `python3`.) Se a aplicação não estiver em
+`http://localhost`, use `--base-url`, por exemplo
+`python3 test_api.py --base-url http://SEU_IP`.
+
+Cada script termina mostrando um resumo do que passou/falhou e espera Enter
+antes de fechar, e gera um relatório em Markdown (`relatorio-testes-api.md` e
+`relatorio-integracao.md`) com o resumo, o log de cada teste e o log bruto
+completo da execução — evidência para os cartões "Finalizar backend e banco
+MySQL" e "Integrar os três containers separados" do [Kanban](docs/KANBAN.md).
+Ambos são seguros para rodar mais de uma vez: usam um sufixo com data/hora nos
+dados de teste e apagam o que criam.
+
 ## Documentos da entrega
 
 - [Arquitetura e decisões técnicas](docs/ARQUITETURA.md)
