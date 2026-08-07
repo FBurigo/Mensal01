@@ -4,8 +4,8 @@
 
 O Estante utiliza uma arquitetura Web em três camadas. Frontend, backend e
 banco de dados são componentes separados, cada um executado em seu próprio
-container. Na primeira entrega, os containers podem compartilhar uma única VM
-do Google Compute Engine para reduzir custo e complexidade operacional.
+container. Na primeira entrega, os containers executam em uma única VM do
+Google Compute Engine para reduzir custo e complexidade operacional.
 
 ![Diagrama da arquitetura Cloud](arquitetura-cloud.svg)
 

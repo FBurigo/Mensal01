@@ -5,6 +5,17 @@ pessoal. O projeto foi pensado para a primeira entrega de Cloud: simples de
 demonstrar, com frontend, backend e banco de dados executados em serviços
 separados e com persistência.
 
+## Aplicação publicada
+
+- aplicação: <http://35.238.205.240/>
+- saúde da API e do banco: <http://35.238.205.240/api/health>
+- documentação REST: <http://35.238.205.240/api/docs>
+- Kanban: <https://github.com/users/FBurigo/projects/2>
+
+O ambiente utiliza somente dados acadêmicos de demonstração. Nesta primeira
+entrega, a aplicação usa HTTP e não possui autenticação; HTTPS e controle de
+acesso estão registrados como melhorias futuras.
+
 ## Funcionalidades
 
 - cadastrar, listar, consultar, editar e excluir livros;
@@ -131,5 +142,5 @@ dados de teste e apagam o que criam.
 - [Roteiro da apresentação](docs/ROTEIRO-APRESENTACAO.md)
 - [Guia de implantação no GCP](docs/DEPLOY-GCP.md)
 
-Antes da entrega, substitua os campos `NOME DO ...` nos documentos, inclua os
-links reais e atualize o relatório com o estado verdadeiro do grupo.
+Antes da entrega, confira se os links públicos, o Kanban e o relatório continuam
+correspondendo ao estado verdadeiro do grupo.
