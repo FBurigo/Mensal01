@@ -7,12 +7,14 @@ e macOS -- só precisa de Python 3.7+, nenhuma dependência externa.
 Uso:
     python3 test_api.py
     python3 test_api.py --base-url http://localhost
+    python3 test_api.py --ci --report-dir artifacts
 
 Pré-requisito: containers no ar (docker compose up -d) e app acessível
 em http://localhost (ajuste com --base-url se usar outra porta/host).
 
-Gera relatorio-testes-api.md na mesma pasta do script, com resumo, log de
-requisição/resposta de cada teste e o log completo da execução.
+Gera relatorio-testes-api.md na pasta indicada por --report-dir (por padrão,
+na mesma pasta do script), com resumo, log de requisição/resposta de cada
+teste e o log completo da execução.
 """
 
 import argparse
@@ -86,8 +88,21 @@ def run_test(nome, method, url, body=None, esperado=200):
 def main():
     parser = argparse.ArgumentParser(description="Testa a API Biblioteca Pessoal de ponta a ponta.")
     parser.add_argument("--base-url", default="http://localhost", help="URL base da aplicação (padrão: http://localhost)")
+    parser.add_argument(
+        "--ci",
+        action="store_true",
+        help="Executa sem pausa interativa ao finalizar",
+    )
+    parser.add_argument(
+        "--report-dir",
+        type=Path,
+        default=SCRIPT_DIR,
+        help="Diretório onde o relatório será salvo",
+    )
     args = parser.parse_args()
     base = args.base_url.rstrip("/")
+    report_dir = args.report_dir.resolve()
+    report_dir.mkdir(parents=True, exist_ok=True)
 
     results = []
     sufixo = datetime.now().strftime("%Y%m%d%H%M%S")  # evita colisão de ISBN entre execuções
@@ -187,7 +202,7 @@ def main():
     linhas.extend(LOG_LINES)
     linhas.append("```")
 
-    report_path = SCRIPT_DIR / "relatorio-testes-api.md"
+    report_path = report_dir / "relatorio-testes-api.md"
     report_path.write_text("\n".join(linhas), encoding="utf-8")
 
     # 6. Resumo final no console
@@ -207,7 +222,8 @@ def main():
     print(f"Relatório gerado em: {report_path}")
 
     codigo_saida = 0 if total_ok == total else 1
-    input("\nPressione Enter para fechar...")
+    if not args.ci:
+        input("\nPressione Enter para fechar...")
     return codigo_saida
 
 

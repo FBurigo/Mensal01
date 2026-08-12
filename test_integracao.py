@@ -10,14 +10,16 @@ de Python.
 Uso:
     python3 test_integracao.py
     python3 test_integracao.py --base-url http://localhost
+    python3 test_integracao.py --ci --report-dir artifacts
 
 Pré-requisito: rodar a partir da pasta do projeto (onde está o
 compose.yaml), com os containers já no ar (docker compose up -d --build).
 Este script reinicia os containers (docker compose restart) para testar
 persistência -- não usa "down -v", os dados não são apagados.
 
-Gera relatorio-integracao.md na mesma pasta, com resumo, log de cada
-checagem e o log completo da execução.
+Gera relatorio-integracao.md na pasta indicada por --report-dir (por padrão,
+na mesma pasta do script), com resumo, log de cada checagem e o log completo
+da execução.
 """
 
 import argparse
@@ -141,8 +143,21 @@ def registrar(nome, passou, esperado, obtido, detalhe):
 def main():
     parser = argparse.ArgumentParser(description="Valida a integração dos containers Biblioteca Pessoal.")
     parser.add_argument("--base-url", default="http://localhost", help="URL base da aplicação (padrão: http://localhost)")
+    parser.add_argument(
+        "--ci",
+        action="store_true",
+        help="Executa sem pausa interativa ao finalizar",
+    )
+    parser.add_argument(
+        "--report-dir",
+        type=Path,
+        default=SCRIPT_DIR,
+        help="Diretório onde o relatório será salvo",
+    )
     args = parser.parse_args()
     base = args.base_url.rstrip("/")
+    report_dir = args.report_dir.resolve()
+    report_dir.mkdir(parents=True, exist_ok=True)
 
     projeto = detect_project(SCRIPT_DIR)
     frontend = f"{projeto}-frontend-1"
@@ -304,7 +319,7 @@ def main():
     linhas.extend(LOG_LINES)
     linhas.append("```")
 
-    report_path = SCRIPT_DIR / "relatorio-integracao.md"
+    report_path = report_dir / "relatorio-integracao.md"
     report_path.write_text("\n".join(linhas), encoding="utf-8")
 
     # Resumo final no console
@@ -324,7 +339,8 @@ def main():
     print(f"Relatório gerado em: {report_path}")
 
     codigo_saida = 0 if total_ok == total else 1
-    input("\nPressione Enter para fechar...")
+    if not args.ci:
+        input("\nPressione Enter para fechar...")
     return codigo_saida
 
 
