@@ -1,0 +1,106 @@
+name: CI Pipeline - Biblioteca Pessoal
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  # =========================================================================
+  # JOB 1: Qualidade de Código, Linting e Segurança
+  # =========================================================================
+  quality-and-unit-tests:
+    name: 1. Qualidade e Análise Estática
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do Código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Instalar Ferramentas de Qualidade
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff pip-audit pytest
+
+      - name: Executar Linter (Ruff)
+        run: ruff check .
+
+      - name: Verificar Formatação de Código (Ruff)
+        run: ruff format --check .
+
+      - name: Auditoria de Segurança de Dependências
+        run: |
+          pip-audit || echo "Aviso: Dependências com vulnerabilidades encontradas."
+
+      - name: Executar Testes Unitários (se existirem)
+        run: |
+          if [ -d "tests/unit" ] || [ -d "tests" ]; then
+            pytest --junitxml=junit-report.xml
+          else
+            echo "Nenhum diretório de testes unitários padrão localizado. Prosseguindo..."
+          fi
+
+      - name: Publicar Relatório JUnit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-report
+          path: junit-report.xml
+          continue-on-error: true
+
+  # =========================================================================
+  # JOB 2: Subir Containers e Executar Testes de API e Integração
+  # =========================================================================
+  integration-tests:
+    name: 2. Testes de API e Integração de Containers
+    needs: quality-and-unit-tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do Código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validar Sintaxe do Docker Compose
+        run: docker compose config --quiet
+
+      - name: Subir Sub-sistema em Containers (Ambiente CI Temporário)
+        run: docker compose up -d --build
+
+      - name: Aguardar Endpoint /api/health Ficar Ativo
+        run: |
+          echo "Aguardando aplicação subir..."
+          timeout 60s bash -c 'until curl -s http://localhost/api/health | grep -q "connected"; do sleep 2; done' || (docker compose logs && exit 1)
+
+      - name: Executar Testes da API (test_api.py)
+        run: python3 test_api.py --base-url http://localhost --ci --report-dir artifacts
+
+      - name: Executar Testes de Integração de Containers (test_integracao.py)
+        run: python3 test_integracao.py --base-url http://localhost --ci --report-dir artifacts
+
+      - name: Coletar Logs dos Containers em Caso de Falha
+        if: failure()
+        run: |
+          mkdir -p artifacts/logs
+          docker compose logs > artifacts/logs/docker-compose.log
+
+      - name: Publicar Artefatos e Relatórios Markdown no GitHub Actions
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorios-e-logs-ci
+          path: artifacts/
+
+      - name: Encerrar e Limpar Ambiente Temporário
+        if: always()
+        run: docker compose down -v
