@@ -1,0 +1,19 @@
+# Lista de permissão: tudo é ignorado por padrão e só o necessário entra no
+# contexto de build. Assim, nenhum arquivo criado depois (.env, banco local,
+# dump, chave) chega à imagem por esquecimento.
+*
+
+!app
+!migrations
+!alembic.ini
+!requirements.txt
+
+# Reforço explícito, mesmo dentro das pastas liberadas acima.
+**/.env
+**/.env.*
+**/*.db
+**/*.pem
+**/*.key
+**/*.log
+**/__pycache__
+**/*.py[cod]

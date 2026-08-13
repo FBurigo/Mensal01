@@ -73,11 +73,58 @@ docker compose down
 > Não use `docker compose down -v` no ambiente de demonstração: a opção `-v`
 > remove o volume do MySQL e, portanto, os dados.
 
+## Imagens Docker e versão implantada
+
+A cada merge na `main`, o pipeline publica as duas imagens no GHCR marcadas com
+o SHA do commit que as originou:
+
+- `ghcr.io/fburigo/mensal01-backend:<sha>`
+- `ghcr.io/fburigo/mensal01-frontend:<sha>`
+
+Pull Requests constroem as imagens para validar os Dockerfiles, mas não
+publicam nada. A publicação só ocorre depois que os testes e as verificações
+das duas imagens passam.
+
+A versão implantada aparece na tag da imagem, em
+`/api/version` (backend), em `/version.json` (frontend) e no rodapé da página,
+que mostra os dois valores lado a lado.
+
+Para baixar e conferir as imagens publicadas — na VM ou em qualquer máquina:
+
+```bash
+echo "$GHCR_TOKEN" | docker login ghcr.io -u SEU_USUARIO --password-stdin
+./scripts/verificar-imagem-publicada.sh <sha-do-commit>
+```
+
+Para construir e verificar as imagens localmente:
+
+```bash
+SHA="$(git rev-parse HEAD)"
+docker build -t mensal01-backend:local  --build-arg APP_VERSION="$SHA" ./backend
+docker build -t mensal01-frontend:local --build-arg APP_VERSION="$SHA" ./frontend
+
+./scripts/smoke-backend.sh  mensal01-backend:local  "$SHA"
+./scripts/smoke-frontend.sh mensal01-frontend:local "$SHA"
+```
+
+O primeiro script confere que `/api/version`, o rótulo da imagem e a variável
+`APP_VERSION` apontam para o mesmo commit. O segundo sobe a imagem do frontend
+sozinha (sem o backend) e confere estáticos, versão, cabeçalhos de segurança, o
+proxy `/api` e a ausência de segredos na imagem.
+
+Para rodar a aplicação inteira com a versão identificada:
+
+```bash
+APP_VERSION="$(git rev-parse HEAD)" docker compose up -d --build
+curl http://localhost/api/version
+```
+
 ## API REST
 
 | Método | Rota | Finalidade |
 |---|---|---|
 | `GET` | `/api/health` | verificar API e banco |
+| `GET` | `/api/version` | consultar a versão implantada (SHA do commit) |
 | `GET` | `/api/books` | listar, buscar e filtrar livros |
 | `GET` | `/api/books/{id}` | consultar um livro |
 | `POST` | `/api/books` | cadastrar um livro |
@@ -141,6 +188,8 @@ dados de teste e apagam o que criam.
 - [Evidências e teste de persistência](docs/EVIDENCIAS.md)
 - [Roteiro da apresentação](docs/ROTEIRO-APRESENTACAO.md)
 - [Guia de implantação no GCP](docs/DEPLOY-GCP.md)
+- [Cartão das imagens Docker](docs/CARTAO-IMAGENS-DOCKER.md)
+- [Evidências das imagens Docker](docs/EVIDENCIAS-IMAGENS-DOCKER.md)
 
 Antes da entrega, confira se os links públicos, o Kanban e o relatório continuam
 correspondendo ao estado verdadeiro do grupo.

@@ -22,7 +22,12 @@ services:
       - data
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      args:
+        # Mesma identificação usada pelo pipeline. Para reproduzir:
+        # APP_VERSION=$(git rev-parse HEAD) docker compose build
+        APP_VERSION: ${APP_VERSION:-dev}
     restart: unless-stopped
     environment:
       DB_HOST: database
@@ -46,7 +51,12 @@ services:
       - data
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        # Identifica a versão da interface. Para reproduzir o build do
+        # pipeline: APP_VERSION=$(git rev-parse HEAD) docker compose build
+        APP_VERSION: ${APP_VERSION:-dev}
     restart: unless-stopped
     depends_on:
       backend:
@@ -54,7 +64,7 @@ services:
     ports:
       - "${APP_PORT:-80}:80"
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/healthz"]
       interval: 10s
       timeout: 5s
       retries: 5

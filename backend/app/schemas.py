@@ -52,3 +52,7 @@ class BookResponse(BookFields):
 class HealthResponse(BaseModel):
     status: str
     database: str
+
+
+class VersionResponse(BaseModel):
+    version: str

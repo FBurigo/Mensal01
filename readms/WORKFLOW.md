@@ -75,7 +75,8 @@ compose.yaml
 │                   ├── schemas.py
 │                   └── main.py
 └── frontend  ◄── frontend/Dockerfile
-                ├── nginx.conf
+                ├── nginx.conf.template
+                ├── security-headers.conf
                 └── src/
                     ├── index.html
                     ├── app.js

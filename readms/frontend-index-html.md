@@ -27,4 +27,4 @@ Página HTML principal (e única) da aplicação "Estante". É uma SPA (Single P
 
 - `frontend/src/styles.css` — visual
 - `frontend/src/app.js` — comportamento
-- `frontend/nginx.conf` — serve este arquivo como raiz do site
+- `frontend/nginx.conf.template` — serve este arquivo como raiz do site
