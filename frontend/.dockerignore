@@ -1,0 +1,16 @@
+# Lista de permissão: tudo é ignorado por padrão e só o necessário entra no
+# contexto de build. Assim, nenhum arquivo criado depois (.env, backup, chave,
+# dump) chega à imagem por esquecimento.
+*
+
+!src
+!nginx.conf.template
+!security-headers.conf
+
+# Reforço explícito, mesmo dentro das pastas liberadas acima.
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+**/*.log
+**/.DS_Store

@@ -10,6 +10,7 @@ Ponto de entrada da API REST. Define a instância FastAPI e todos os endpoints H
 
 | Método | Rota | Descrição |
 |---|---|---|
+| `GET` | `/api/version` | Informa a versão implantada (SHA do commit que gerou a imagem) |
 | `GET` | `/api/health` | Verifica saúde da API e do banco |
 | `GET` | `/api/books` | Lista livros com busca (`?q=`) e filtro de status (`?reading_status=`) |
 | `GET` | `/api/books/{id}` | Retorna um livro pelo ID |
@@ -25,6 +26,7 @@ Ponto de entrada da API REST. Define a instância FastAPI e todos os endpoints H
 - **Livro não encontrado**: retorna HTTP 404
 - **Banco indisponível no health check**: retorna HTTP 503
 - **Docs interativos (Swagger)**: disponíveis em `/api/docs`
+- **Versão implantada**: `APP_VERSION` é lida do ambiente na importação do módulo. O valor é gravado na imagem em tempo de build (`ARG`/`ENV APP_VERSION`) a partir do SHA do commit; sem build, cai para `dev`. `/api/version` não consulta o banco, então responde mesmo com o MySQL fora do ar
 
 ## Dependências
 

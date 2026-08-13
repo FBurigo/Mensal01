@@ -1,3 +1,4 @@
+import os
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Response, status
@@ -15,7 +16,13 @@ from app.schemas import (
     BookStatusUpdate,
     HealthResponse,
     ReadingStatus,
+    VersionResponse,
 )
+
+# Identifica a versão implantada. É definida em tempo de build da imagem
+# Docker (ARG/ENV APP_VERSION), a partir do SHA do commit publicado pelo
+# pipeline de CI/CD. Em ambiente local sem build, cai para "dev".
+APP_VERSION = os.environ.get("APP_VERSION", "dev")
 
 app = FastAPI(
     title="Biblioteca Pessoal API",
@@ -51,6 +58,11 @@ def commit_or_conflict(db: Session) -> None:
         raise HTTPException(
             status_code=409, detail="Já existe um livro com este ISBN."
         ) from exc
+
+
+@app.get("/api/version", response_model=VersionResponse, tags=["Saúde"])
+def version() -> VersionResponse:
+    return VersionResponse(version=APP_VERSION)
 
 
 @app.get("/api/health", response_model=HealthResponse, tags=["Saúde"])

@@ -48,6 +48,12 @@ def sample_book(**overrides):
     return payload
 
 
+def test_version_endpoint_returns_app_version() -> None:
+    response = client.get("/api/version")
+    assert response.status_code == 200
+    assert response.json() == {"version": os.environ.get("APP_VERSION", "dev")}
+
+
 def test_complete_book_lifecycle() -> None:
     created = client.post("/api/books", json=sample_book())
     assert created.status_code == 201

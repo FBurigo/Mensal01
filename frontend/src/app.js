@@ -204,6 +204,37 @@ function showToast(message, isError = false) {
   window.setTimeout(() => elements.toast.classList.remove("visible"), 2800);
 }
 
+// Versão implantada: a interface mostra o SHA gravado na imagem do frontend
+// (/version.json) e o SHA informado pelo backend (/api/version). Valores
+// diferentes indicam que os dois containers vieram de commits distintos.
+const versionElements = {
+  ui: document.querySelector("#ui-version"),
+  api: document.querySelector("#api-version"),
+};
+
+function shortVersion(value) {
+  if (!value) return "indisponível";
+  return /^[0-9a-f]{40}$/i.test(value) ? value.slice(0, 7) : value;
+}
+
+async function fillVersion(element, url, field) {
+  if (!element) return;
+  try {
+    const response = await fetch(url, { cache: "no-store" });
+    if (!response.ok) throw new Error("resposta inválida");
+    const value = (await response.json())[field];
+    element.textContent = shortVersion(value);
+    if (value) element.title = value;
+  } catch (_) {
+    element.textContent = "indisponível";
+  }
+}
+
+function loadVersions() {
+  fillVersion(versionElements.ui, "/version.json", "version");
+  fillVersion(versionElements.api, "/api/version", "version");
+}
+
 document.querySelector("#new-book").addEventListener("click", openCreateDialog);
 document.querySelector("#empty-add").addEventListener("click", openCreateDialog);
 document.querySelector("#close-dialog").addEventListener("click", () => elements.dialog.close());
@@ -216,3 +247,4 @@ elements.search.addEventListener("input", () => {
 });
 
 loadBooks();
+loadVersions();
