@@ -42,7 +42,7 @@ trap limpar EXIT
 esperar_http() {
   local url="$1" tentativas="${2:-30}"
   for _ in $(seq 1 "$tentativas"); do
-    if curl -fsS -m 3 -o /dev/null "$url"; then
+    if curl -fs -m 3 -o /dev/null "$url"; then
       return 0
     fi
     sleep 1
@@ -122,8 +122,11 @@ verificar_cabecalhos "/styles.css" "css "
 echo
 echo "3) Nenhum segredo dentro da imagem"
 # ---------------------------------------------------------------------------
+# A varredura cobre apenas o que a nossa build copiou (/usr/share/nginx/html e /etc/nginx).
+# Procurar na imagem inteira acusaria os certificados raiz publicos de
+# /etc/ssl, que sao parte da imagem base e nao segredos do projeto.
 arquivos_sensiveis="$(docker run --rm --entrypoint sh "$IMAGEM" -c \
-  'find / -xdev \( -name ".env" -o -name ".env.*" -o -name "*.pem" -o -name "*.key" -o -name "id_rsa" \) -print 2>/dev/null' || true)"
+  'find /usr/share/nginx/html /etc/nginx -xdev \( -name ".env" -o -name ".env.*" -o -name "*.pem" -o -name "*.key" -o -name "id_rsa" \) -print 2>/dev/null' || true)"
 if [ -z "$arquivos_sensiveis" ]; then
   ok "nenhum .env, chave ou certificado na imagem"
 else

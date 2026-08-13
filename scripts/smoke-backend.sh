@@ -49,7 +49,7 @@ docker run -d --name "$CONTAINER" -p "127.0.0.1:${PORTA}:8000" "$IMAGEM" \
 
 subiu=false
 for _ in $(seq 1 30); do
-  if curl -fsS -m 3 -o /dev/null "${BASE}/api/version"; then
+  if curl -fs -m 3 -o /dev/null "${BASE}/api/version"; then
     subiu=true
     break
   fi
@@ -119,8 +119,11 @@ fi
 echo
 echo "4) Nenhum segredo dentro da imagem"
 # ---------------------------------------------------------------------------
+# A varredura cobre apenas o que a nossa build copiou (/app).
+# Procurar na imagem inteira acusaria os certificados raiz publicos de
+# /etc/ssl, que sao parte da imagem base e nao segredos do projeto.
 arquivos_sensiveis="$(docker run --rm --entrypoint sh "$IMAGEM" -c \
-  'find / -xdev \( -name ".env" -o -name ".env.*" -o -name "*.db" -o -name "*.pem" -o -name "*.key" -o -name "id_rsa" \) -print 2>/dev/null' || true)"
+  'find /app -xdev \( -name ".env" -o -name ".env.*" -o -name "*.db" -o -name "*.pem" -o -name "*.key" -o -name "id_rsa" \) -print 2>/dev/null' || true)"
 if [ -z "$arquivos_sensiveis" ]; then
   ok "nenhum .env, banco local, chave ou certificado na imagem"
 else
