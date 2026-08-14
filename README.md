@@ -151,6 +151,12 @@ O volume MySQL não é removido. Ao final, o próprio job verifica frontend,
 8000 e 3306. Consulte [o guia de deploy](docs/DEPLOY-GCP.md) para as variáveis e
 o bootstrap do ambiente `production`.
 
+Antes de cada atualização, o deploy registra a versão ativa e cria um backup
+compactado do MySQL com checksum. Se saúde, banco ou SHA falharem, as imagens
+anteriores são restauradas automaticamente, a aplicação é validada novamente e
+o job permanece com resultado de falha. O input manual `rollback_drill` permite
+comprovar esse fluxo com uma falha controlada, sem publicar uma imagem defeituosa.
+
 ## API REST
 
 | Método | Rota | Finalidade |
