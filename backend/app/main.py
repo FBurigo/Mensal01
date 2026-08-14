@@ -83,9 +83,7 @@ def list_books(
     query = select(Book)
     if q:
         pattern = f"%{q.strip()}%"
-        query = query.where(
-            or_(Book.title.ilike(pattern), Book.author.ilike(pattern))
-        )
+        query = query.where(or_(Book.title.ilike(pattern), Book.author.ilike(pattern)))
     if reading_status:
         query = query.where(Book.reading_status == reading_status.value)
     query = query.order_by(Book.created_at.desc(), Book.id.desc())
@@ -122,12 +120,8 @@ def replace_book(book_id: int, payload: BookReplace, db: DbSession) -> Book:
     return book
 
 
-@app.patch(
-    "/api/books/{book_id}/status", response_model=BookResponse, tags=["Livros"]
-)
-def update_book_status(
-    book_id: int, payload: BookStatusUpdate, db: DbSession
-) -> Book:
+@app.patch("/api/books/{book_id}/status", response_model=BookResponse, tags=["Livros"])
+def update_book_status(book_id: int, payload: BookStatusUpdate, db: DbSession) -> Book:
     book = get_book_or_404(book_id, db)
     book.reading_status = payload.reading_status.value
     commit_or_conflict(db)

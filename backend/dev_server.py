@@ -9,6 +9,7 @@ Como rodar:
     alembic upgrade head
     uvicorn dev_server:app --reload --port 8000
 """
+
 import os
 import pathlib
 
