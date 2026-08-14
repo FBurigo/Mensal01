@@ -138,6 +138,19 @@ APP_VERSION="$(git rev-parse HEAD)" docker compose up -d --build
 curl http://localhost/api/version
 ```
 
+## Entrega contínua na GCP
+
+Depois que um push na `main` passa por todos os testes, publica as imagens e
+valida seu download, o job `deploy-production` autentica na GCP por Workload
+Identity Federation. Não existe chave JSON permanente no GitHub.
+
+O job envia o manifesto e o script de implantação à VM, baixa exatamente as
+imagens marcadas com o SHA aprovado e executa `docker compose up -d --no-build`.
+O volume MySQL não é removido. Ao final, o próprio job verifica frontend,
+`/api/health`, `/api/version`, proxy `/api` e ausência de publicação das portas
+8000 e 3306. Consulte [o guia de deploy](docs/DEPLOY-GCP.md) para as variáveis e
+o bootstrap do ambiente `production`.
+
 ## API REST
 
 | Método | Rota | Finalidade |
