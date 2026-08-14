@@ -12,7 +12,9 @@ permissions:
 
 concurrency:
   group: pipeline-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # PRs obsoletos podem ser cancelados. Execuções da main chegam ao deploy e
+  # são serializadas pelo grupo de concorrência específico de produção.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   REGISTRY: ghcr.io
@@ -267,3 +269,110 @@ jobs:
 
       - name: Baixar e iniciar imagens publicadas
         run: bash ./scripts/verificar-imagem-publicada.sh "${{ github.sha }}"
+
+  deploy-production:
+    name: Implantação automática na GCP
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: verify-publication
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: http://${{ vars.GCP_VM_IP }}
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      GCP_WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
+      GCP_SERVICE_ACCOUNT: ${{ vars.GCP_SERVICE_ACCOUNT }}
+      GCP_ZONE: ${{ vars.GCP_ZONE }}
+      GCP_VM_NAME: ${{ vars.GCP_VM_NAME }}
+      GCP_DEPLOY_PATH: ${{ vars.GCP_DEPLOY_PATH }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Validar configuração do ambiente
+        shell: bash
+        run: |
+          set -euo pipefail
+          for variavel in \
+            GCP_PROJECT_ID GCP_WIF_PROVIDER GCP_SERVICE_ACCOUNT \
+            GCP_ZONE GCP_VM_NAME GCP_DEPLOY_PATH; do
+            if [[ -z "${!variavel:-}" ]]; then
+              echo "::error::Variável obrigatória ausente no environment production: ${variavel}"
+              exit 1
+            fi
+          done
+
+          if [[ ! "$GCP_DEPLOY_PATH" =~ ^/[A-Za-z0-9._/-]+$ ]]; then
+            echo "::error::GCP_DEPLOY_PATH deve ser um caminho absoluto sem espaços."
+            exit 1
+          fi
+
+      - name: Autenticar na GCP sem chave permanente
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ env.GCP_WIF_PROVIDER }}
+          service_account: ${{ env.GCP_SERVICE_ACCOUNT }}
+
+      - name: Configurar Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Preparar pacote de implantação
+        run: >-
+          tar -czf deploy-production.tar.gz
+          compose.yaml compose.production.yaml scripts/deploy-production.sh
+
+      - name: Enviar arquivos para a VM
+        run: |
+          gcloud compute scp deploy-production.tar.gz \
+            "${GCP_VM_NAME}:/tmp/mensal01-${GITHUB_SHA}.tar.gz" \
+            --project="$GCP_PROJECT_ID" \
+            --zone="$GCP_ZONE" \
+            --ssh-key-expire-after=10m \
+            --quiet
+
+      - name: Atualizar containers e executar smoke tests
+        run: |
+          set -euo pipefail
+          remote_command="$(cat <<EOF
+          set -euo pipefail
+          sudo mkdir -p '${GCP_DEPLOY_PATH}'
+          sudo tar -xzf /tmp/mensal01-${GITHUB_SHA}.tar.gz -C '${GCP_DEPLOY_PATH}'
+          sudo chown --reference='${GCP_DEPLOY_PATH}/.env' \
+            '${GCP_DEPLOY_PATH}/compose.yaml' \
+            '${GCP_DEPLOY_PATH}/compose.production.yaml' \
+            '${GCP_DEPLOY_PATH}/scripts/deploy-production.sh'
+          sudo chmod 0755 '${GCP_DEPLOY_PATH}/scripts/deploy-production.sh'
+          rm -f /tmp/mensal01-${GITHUB_SHA}.tar.gz
+          sudo bash '${GCP_DEPLOY_PATH}/scripts/deploy-production.sh' \
+            '${GITHUB_SHA}' '${GCP_DEPLOY_PATH}'
+          EOF
+          )"
+
+          gcloud compute ssh "$GCP_VM_NAME" \
+            --project="$GCP_PROJECT_ID" \
+            --zone="$GCP_ZONE" \
+            --ssh-key-expire-after=10m \
+            --command="$remote_command" \
+            --quiet
+
+      - name: Registrar resumo do deployment
+        if: always()
+        run: |
+          {
+            echo "### Deployment em production"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- VM: \`${GCP_VM_NAME}\`"
+            echo "- Zona: \`${GCP_ZONE}\`"
+            echo "- Aplicação: http://${{ vars.GCP_VM_IP }}/"
+            echo "- Resultado: \`${{ job.status }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

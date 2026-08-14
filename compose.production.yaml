@@ -1,0 +1,8 @@
+services:
+  backend:
+    image: ghcr.io/fburigo/mensal01-backend:${APP_VERSION:?Defina APP_VERSION com o SHA aprovado}
+    pull_policy: always
+
+  frontend:
+    image: ghcr.io/fburigo/mensal01-frontend:${APP_VERSION:?Defina APP_VERSION com o SHA aprovado}
+    pull_policy: always

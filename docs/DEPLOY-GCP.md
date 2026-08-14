@@ -56,18 +56,47 @@ Condições esperadas:
 - `/api/health` informa que o banco está conectado;
 - as portas 8000 e 3306 não respondem externamente.
 
-## Atualização manual nesta etapa
+## Atualização automática
 
-Como CI/CD não é avaliado agora, uma atualização controlada pode ser feita com:
+O repositório GitHub contém somente metadados não secretos. O environment
+`production` é criado automaticamente na primeira execução do job e registra
+o histórico dos deployments:
+
+| Variável | Finalidade |
+|---|---|
+| `GCP_PROJECT_ID` | projeto que contém a VM e o pool de identidades |
+| `GCP_WIF_PROVIDER` | nome completo do provider OIDC |
+| `GCP_SERVICE_ACCOUNT` | conta de serviço exclusiva do deploy |
+| `GCP_ZONE` | zona da VM |
+| `GCP_VM_NAME` | nome da instância |
+| `GCP_VM_IP` | endereço exibido no histórico do deployment |
+| `GCP_DEPLOY_PATH` | diretório absoluto que já contém o `.env` de produção |
+
+O GitHub troca o token OIDC do job por credenciais curtas da GCP. A confiança
+é limitada ao repositório `FBurigo/Mensal01`; nenhuma chave JSON de conta de
+serviço é criada ou armazenada.
+
+Após os jobs de qualidade, integração, imagens e publicação, o job
+`deploy-production`:
+
+1. envia `compose.yaml`, `compose.production.yaml` e o script de deploy à VM;
+2. informa o SHA aprovado em `APP_VERSION`;
+3. baixa backend e frontend do GHCR pela tag imutável do SHA;
+4. executa `docker compose up -d --no-build --wait`;
+5. confirma que o volume `mysql_data` continua sendo o mesmo;
+6. confirma que 8000 e 3306 não possuem publicação no host;
+7. valida frontend, banco, proxy `/api` e `/api/version`;
+8. publica o resultado e os logs no GitHub Actions.
+
+O script nunca executa `docker compose down -v`. Em falhas, ele apenas coleta
+`docker compose ps` e os últimos logs para diagnóstico. O rollback automático
+é tratado separadamente pela issue #15.
+
+Para diagnóstico manual, reproduza na VM sem reconstruir imagens:
 
 ```bash
-git pull --ff-only
-docker compose up -d --build
-docker compose ps
+sudo bash scripts/deploy-production.sh <sha-de-40-caracteres> "$(pwd)"
 ```
-
-Antes de atualizar no dia da apresentação, registre uma versão estável e tenha
-prints/vídeo de contingência. Não execute comandos que removam o volume.
 
 ## Backup mínimo antes da apresentação
 
@@ -85,3 +114,5 @@ backup deve ser automatizado, armazenado fora da VM e ter restauração testada.
 - [Instalação do Docker Engine no Ubuntu](https://docs.docker.com/engine/install/ubuntu/)
 - [Regras de firewall da VPC](https://docs.cloud.google.com/firewall/docs/using-firewalls)
 - [MySQL 8.4 com containers Docker](https://dev.mysql.com/doc/refman/8.4/en/linux-installation-docker.html)
+- [Workload Identity Federation para pipelines](https://cloud.google.com/iam/docs/workload-identity-federation-with-deployment-pipelines)
+- [Autenticação Google para GitHub Actions](https://github.com/google-github-actions/auth)
