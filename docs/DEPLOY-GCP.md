@@ -80,17 +80,28 @@ Após os jobs de qualidade, integração, imagens e publicação, o job
 `deploy-production`:
 
 1. envia `compose.yaml`, `compose.production.yaml` e o script de deploy à VM;
-2. informa o SHA aprovado em `APP_VERSION`;
-3. baixa backend e frontend do GHCR pela tag imutável do SHA;
-4. executa `docker compose up -d --no-build --wait`;
-5. confirma que o volume `mysql_data` continua sendo o mesmo;
-6. confirma que 8000 e 3306 não possuem publicação no host;
-7. valida frontend, banco, proxy `/api` e `/api/version`;
-8. publica o resultado e os logs no GitHub Actions.
+2. registra a versão ativa e o identificador do volume MySQL;
+3. cria em `/var/backups/mensal01` um dump compactado e seu SHA-256;
+4. informa o SHA aprovado em `APP_VERSION`;
+5. baixa backend e frontend do GHCR pela tag imutável do SHA;
+6. executa `docker compose up -d --no-build --wait`;
+7. confirma o mesmo volume e que 8000/3306 continuam privadas;
+8. valida frontend, banco, proxy `/api` e o SHA de `/api/version`;
+9. publica aprovação, diagnóstico ou rollback no GitHub Actions.
 
-O script nunca executa `docker compose down -v`. Em falhas, ele apenas coleta
-`docker compose ps` e os últimos logs para diagnóstico. O rollback automático
-é tratado separadamente pela issue #15.
+O script nunca executa `docker compose down -v`. Se a candidata falhar, ele
+coleta `docker compose ps` e logs, restaura as imagens da versão registrada,
+repete saúde/versão/volume e mantém o job com resultado falho mesmo quando a
+recuperação funciona. O backup não é restaurado automaticamente porque o volume
+é preservado; ele fica disponível para recuperação manual de banco, evitando
+sobrescrever dados gravados durante a janela de deploy.
+
+## Drill seguro de rollback
+
+Em **Actions → CI/CD - Biblioteca Pessoal → Run workflow**, selecione a `main` e
+marque `rollback_drill`. O workflow valida o commit atual, implanta a mesma tag e
+força uma rejeição após a validação. O rollback restaura e valida a versão
+anterior, mas o job termina falho de propósito para registrar a evidência.
 
 Para diagnóstico manual, reproduza na VM sem reconstruir imagens:
 
@@ -98,7 +109,7 @@ Para diagnóstico manual, reproduza na VM sem reconstruir imagens:
 sudo bash scripts/deploy-production.sh <sha-de-40-caracteres> "$(pwd)"
 ```
 
-## Backup mínimo antes da apresentação
+## Backup manual adicional
 
 ```bash
 docker compose exec -T database sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" mysqldump -u"$MYSQL_USER" "$MYSQL_DATABASE"' > biblioteca-backup.sql

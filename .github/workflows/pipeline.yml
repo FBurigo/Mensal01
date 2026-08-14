@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      rollback_drill:
+        description: Forçar falha controlada e comprovar rollback em production
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -272,8 +278,29 @@ jobs:
 
   deploy-production:
     name: Implantação automática na GCP
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: verify-publication
+    if: >-
+      always() &&
+      (
+        (
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main' &&
+          needs.verify-publication.result == 'success'
+        ) ||
+        (
+          github.event_name == 'workflow_dispatch' &&
+          inputs.rollback_drill == true &&
+          needs.quality-and-unit-tests.result == 'success' &&
+          needs.integration-tests.result == 'success' &&
+          needs.backend-smoke.result == 'success' &&
+          needs.frontend-smoke.result == 'success'
+        )
+      )
+    needs:
+      - quality-and-unit-tests
+      - integration-tests
+      - backend-smoke
+      - frontend-smoke
+      - verify-publication
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:
@@ -353,7 +380,9 @@ jobs:
             '${GCP_DEPLOY_PATH}/scripts/deploy-production.sh'
           sudo chmod 0755 '${GCP_DEPLOY_PATH}/scripts/deploy-production.sh'
           rm -f /tmp/mensal01-${GITHUB_SHA}.tar.gz
-          sudo bash '${GCP_DEPLOY_PATH}/scripts/deploy-production.sh' \
+          sudo env \
+            DEPLOY_FORCE_FAILURE_AFTER_START='${{ github.event_name == 'workflow_dispatch' && inputs.rollback_drill }}' \
+            bash '${GCP_DEPLOY_PATH}/scripts/deploy-production.sh' \
             '${GITHUB_SHA}' '${GCP_DEPLOY_PATH}'
           EOF
           )"
@@ -374,5 +403,6 @@ jobs:
             echo "- VM: \`${GCP_VM_NAME}\`"
             echo "- Zona: \`${GCP_ZONE}\`"
             echo "- Aplicação: http://${{ vars.GCP_VM_IP }}/"
+            echo "- Drill de rollback: \`${{ github.event_name == 'workflow_dispatch' && inputs.rollback_drill }}\`"
             echo "- Resultado: \`${{ job.status }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
