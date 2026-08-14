@@ -112,6 +112,25 @@ O primeiro script confere que `/api/version`, o rótulo da imagem e a variável
 sozinha (sem o backend) e confere estáticos, versão, cabeçalhos de segurança, o
 proxy `/api` e a ausência de segredos na imagem.
 
+## Integração contínua
+
+Todo Pull Request para `main` executa a pipeline definida em
+`.github/workflows/pipeline.yml`. Antes de permitir a publicação das imagens,
+ela executa:
+
+1. Ruff e verificação de formatação;
+2. auditoria das dependências Python com `pip-audit`;
+3. pytest com relatório JUnit;
+4. validação do Docker Compose com credenciais temporárias;
+5. subida de frontend, backend e MySQL em ambiente descartável;
+6. testes HTTP da API e testes de integração/persistência;
+7. smoke tests das imagens do backend e frontend.
+
+Os relatórios JUnit, API e integração são publicados como artifacts. Em caso
+de falha do ambiente Docker, a pipeline também publica o estado e os logs dos
+containers. O ambiente temporário é removido ao final, inclusive quando um
+teste falha.
+
 Para rodar a aplicação inteira com a versão identificada:
 
 ```bash

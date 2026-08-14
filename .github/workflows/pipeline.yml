@@ -1,0 +1,269 @@
+name: CI/CD - Biblioteca Pessoal
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pipeline-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_OWNER: fburigo
+
+jobs:
+  quality-and-unit-tests:
+    name: Qualidade, segurança e testes unitários
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configurar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+
+      - name: Instalar dependências e ferramentas
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r backend/requirements-dev.txt
+          python -m pip install "pip-audit>=2.10,<3.0"
+
+      - name: Preparar diretório de artifacts
+        run: mkdir -p artifacts
+
+      - name: Executar Ruff
+        run: python -m ruff check backend test_api.py test_integracao.py
+
+      - name: Verificar formatação
+        if: ${{ always() && !cancelled() }}
+        run: python -m ruff format --check backend test_api.py test_integracao.py
+
+      - name: Auditar dependências
+        if: ${{ always() && !cancelled() }}
+        run: python -m pip_audit -r backend/requirements.txt
+
+      - name: Executar pytest e gerar JUnit
+        if: ${{ always() && !cancelled() }}
+        working-directory: backend
+        run: python -m pytest -v --junitxml=../artifacts/junit-report.xml
+
+      - name: Publicar relatório JUnit
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: junit-report-${{ github.run_id }}
+          path: artifacts/junit-report.xml
+          if-no-files-found: warn
+          retention-days: 30
+
+  integration-tests:
+    name: API, MySQL e integração dos containers
+    needs: quality-and-unit-tests
+    runs-on: ubuntu-latest
+    env:
+      MYSQL_DATABASE: biblioteca_ci
+      MYSQL_USER: biblioteca_ci
+      MYSQL_PASSWORD: ci-password-only-not-a-secret
+      MYSQL_ROOT_PASSWORD: ci-root-password-only-not-a-secret
+      APP_PORT: "8080"
+      APP_VERSION: ${{ github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configurar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Preparar diretório de artifacts
+        run: mkdir -p artifacts/logs
+
+      - name: Validar Docker Compose
+        run: docker compose config --quiet
+
+      - name: Subir ambiente temporário
+        run: docker compose up -d --build --wait --wait-timeout 180
+
+      - name: Aguardar endpoint de saúde
+        run: |
+          for tentativa in $(seq 1 30); do
+            if curl --fail --silent --show-error http://127.0.0.1:8080/api/health |
+              grep --quiet '"database":"connected"'; then
+              exit 0
+            fi
+            echo "Tentativa ${tentativa}/30: aguardando /api/health"
+            sleep 2
+          done
+          docker compose ps
+          docker compose logs --no-color
+          exit 1
+
+      - name: Executar testes da API
+        run: >-
+          python test_api.py --base-url http://127.0.0.1:8080
+          --ci --report-dir artifacts
+
+      - name: Executar testes de integração
+        if: ${{ always() && !cancelled() }}
+        run: >-
+          python test_integracao.py --base-url http://127.0.0.1:8080
+          --ci --report-dir artifacts
+
+      - name: Coletar logs em caso de falha
+        if: failure()
+        run: |
+          docker compose ps --all > artifacts/logs/docker-compose-ps.txt 2>&1 || true
+          docker compose logs --no-color > artifacts/logs/docker-compose.log 2>&1 || true
+
+      - name: Publicar relatórios e logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: integration-reports-${{ github.run_id }}
+          path: artifacts/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Desligar ambiente temporário
+        if: always()
+        run: docker compose down -v --remove-orphans
+
+  backend-smoke:
+    name: Versão e associação com o commit (backend)
+    needs: integration-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build local da imagem do backend
+        uses: docker/build-push-action@v7
+        with:
+          context: ./backend
+          push: false
+          load: true
+          tags: mensal01-backend:ci
+          build-args: |
+            APP_VERSION=${{ github.sha }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Verificar imagem do backend
+        run: bash ./scripts/smoke-backend.sh mensal01-backend:ci "${{ github.sha }}"
+
+  frontend-smoke:
+    name: Nginx, proxy /api e segredos (frontend)
+    needs: integration-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build local da imagem do frontend
+        uses: docker/build-push-action@v7
+        with:
+          context: ./frontend
+          push: false
+          load: true
+          tags: mensal01-frontend:ci
+          build-args: |
+            APP_VERSION=${{ github.sha }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+      - name: Verificar imagem do frontend
+        run: bash ./scripts/smoke-frontend.sh mensal01-frontend:ci "${{ github.sha }}"
+
+  build-and-push:
+    name: Build e publicação (${{ matrix.service }})
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [backend-smoke, frontend-smoke]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: backend
+            context: ./backend
+            image: mensal01-backend
+          - service: frontend
+            context: ./frontend
+            image: mensal01-frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login no GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build e push da imagem
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ matrix.image }}:${{ github.sha }}
+          build-args: |
+            APP_VERSION=${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+      - name: Resumo da publicação
+        run: |
+          {
+            echo "### Imagem publicada: ${{ matrix.service }}"
+            echo "- Tag: \`${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ matrix.image }}:${{ github.sha }}\`"
+            echo "- Digest: \`${{ steps.build.outputs.digest }}\`"
+            echo "- Pacote: https://github.com/${{ env.IMAGE_OWNER }}/Mensal01/pkgs/container/${{ matrix.image }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  verify-publication:
+    name: Download e inicialização das imagens publicadas
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Login no GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Baixar e iniciar imagens publicadas
+        run: bash ./scripts/verificar-imagem-publicada.sh "${{ github.sha }}"
