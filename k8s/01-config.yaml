@@ -1,0 +1,34 @@
+# Configuração da aplicação Estante.
+# Substitui as variáveis de ambiente que, no Docker Compose, ficavam no
+# compose.yaml e no arquivo .env.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: estante-config
+  namespace: estante
+data:
+  # Banco de dados (o Service do MySQL se chama "mysql")
+  DB_HOST: mysql
+  DB_PORT: "3306"
+  DB_NAME: biblioteca
+  DB_USER: biblioteca_app
+  # Proxy /api do Nginx (frontend -> backend)
+  # Nome completo (FQDN): o resolver do Nginx não usa os domínios de busca do
+  # cluster, então o nome curto "backend" não é resolvido (502).
+  BACKEND_HOST: backend.estante.svc.cluster.local
+  BACKEND_PORT: "8000"
+  # O resolver do Nginx exige um IP: aqui é o ClusterIP do kube-dns.
+  # Confira com: kubectl -n kube-system get svc kube-dns
+  NGINX_RESOLVER: 10.96.0.10
+---
+# ATENÇÃO: valores de demonstração para a atividade. Em produção, segredos
+# não são versionados no Git (use um gerenciador de segredos).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: estante-secret
+  namespace: estante
+type: Opaque
+stringData:
+  MYSQL_PASSWORD: estante-demo-123
+  MYSQL_ROOT_PASSWORD: estante-root-demo-456
