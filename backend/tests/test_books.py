@@ -1,4 +1,5 @@
 import os
+import socket
 
 os.environ["DATABASE_URL"] = "sqlite+pysqlite:///:memory:"
 
@@ -45,6 +46,12 @@ def sample_book(**overrides):
     }
     payload.update(overrides)
     return payload
+
+
+def test_responses_identify_serving_instance() -> None:
+    response = client.get("/api/version")
+
+    assert response.headers["X-Served-By"] == socket.gethostname()
 
 
 def test_version_endpoint_returns_app_version() -> None:
