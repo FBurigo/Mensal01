@@ -1,0 +1,100 @@
+# API FastAPI: Job de migração + Deployment (2 réplicas) + Service.
+#
+# No Docker Compose a imagem executa "alembic upgrade head && uvicorn ...".
+# Com 2 réplicas, as duas migrariam ao mesmo tempo; por isso a migração roda
+# uma única vez, em um Job, e o Deployment só sobe o uvicorn.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: backend-migrate
+  namespace: estante
+spec:
+  # O Job tenta de novo enquanto o MySQL ainda está iniciando.
+  backoffLimit: 30
+  template:
+    metadata:
+      labels:
+        app: backend-migrate
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: migrate
+          image: estante-backend:1.0
+          imagePullPolicy: Never
+          command: ["alembic", "upgrade", "head"]
+          envFrom:
+            - configMapRef:
+                name: estante-config
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: estante-secret
+                  key: MYSQL_PASSWORD
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: estante
+  labels:
+    app: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: estante-backend:1.0
+          imagePullPolicy: Never
+          command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: estante-config
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: estante-secret
+                  key: MYSQL_PASSWORD
+          # Dá tempo ao MySQL iniciar sem que o liveness reinicie o Pod.
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            periodSeconds: 5
+            failureThreshold: 36
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            periodSeconds: 10
+            failureThreshold: 6
+---
+# ClusterIP: o tráfego é balanceado entre os Pods do backend.
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: estante
+spec:
+  type: ClusterIP
+  selector:
+    app: backend
+  ports:
+    - port: 8000
+      targetPort: 8000
