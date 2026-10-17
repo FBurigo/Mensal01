@@ -1,7 +1,8 @@
 import os
+import socket
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Response, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import or_, select, text
 from sqlalchemy.exc import IntegrityError
@@ -39,6 +40,19 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["Content-Type"],
 )
+
+# Nome do Pod (ou do container) que atendeu a requisição. No Kubernetes o
+# hostname é o nome do Pod, o que permite demonstrar o balanceamento de carga
+# entre as réplicas.
+HOSTNAME = socket.gethostname()
+
+
+@app.middleware("http")
+async def add_served_by_header(request: Request, call_next) -> Response:
+    response = await call_next(request)
+    response.headers["X-Served-By"] = HOSTNAME
+    return response
+
 
 DbSession = Annotated[Session, Depends(get_db)]
 
