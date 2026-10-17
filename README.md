@@ -73,6 +73,117 @@ docker compose down
 > Não use `docker compose down -v` no ambiente de demonstração: a opção `-v`
 > remove o volume do MySQL e, portanto, os dados.
 
+## Executar no Kubernetes (Minikube)
+
+A mesma aplicação roda em um cluster Kubernetes local. Os manifestos estão em [`k8s/`](k8s/) e as evidências em [`evidencias/`](evidencias/).
+
+### Arquitetura
+
+```
+Navegador
+   │  (kubectl port-forward / minikube service)
+   ▼
+Service frontend (NodePort 30080)
+   ▼
+Pods frontend ×2 (Nginx) ── proxy /api ──► Service backend (ClusterIP :8000)
+                                                  ▼
+                                         Pods backend ×2 (FastAPI)
+                                                  ▼
+                                       Service mysql (ClusterIP :3306)
+                                                  ▼
+                                       Pod mysql ── PVC (dados persistentes)
+```
+
+| Recurso | Arquivo | Função |
+|---|---|---|
+| Namespace `estante` | `00-namespace.yaml` | Isola a aplicação |
+| ConfigMap / Secret | `01-config.yaml` | Configuração e senhas (valores de demonstração; em produção, segredos não são versionados) |
+| PVC + Deployment + Service `mysql` | `10-mysql.yaml` | Banco com dados persistentes (1 réplica, `Recreate`) |
+| Job + Deployment + Service `backend` | `20-backend.yaml` | Migração Alembic (uma vez) e API com 2 réplicas |
+| Deployment + Service `frontend` | `30-frontend.yaml` | Nginx com 2 réplicas, exposto por NodePort |
+
+### Pré-requisitos
+
+Docker (em execução), [Minikube](https://minikube.sigs.k8s.io/docs/start) e `kubectl`.
+
+### Passo a passo
+
+```bash
+# 1. Subir o cluster
+minikube start --driver=docker
+kubectl get nodes                      # deve aparecer Ready
+
+# 2. Construir as imagens e levá-las ao Minikube
+docker build -t estante-backend:1.0 ./backend
+docker build -t estante-frontend:1.0 ./frontend
+minikube image load estante-backend:1.0
+minikube image load estante-frontend:1.0
+
+# 3. Aplicar os manifestos
+kubectl apply -f k8s/
+
+# 4. Aguardar tudo ficar pronto (o MySQL leva cerca de 1 minuto)
+kubectl -n estante wait --for=condition=complete job/backend-migrate --timeout=300s
+kubectl -n estante rollout status deploy/backend
+kubectl -n estante rollout status deploy/frontend
+kubectl -n estante get pods
+```
+
+### Acessar a aplicação
+
+No Windows com o driver Docker, o NodePort não é acessível diretamente. Use um destes:
+
+```bash
+kubectl -n estante port-forward svc/frontend 8080:80   # abra http://localhost:8080
+# ou
+minikube service frontend -n estante
+```
+
+Teste rápido: `curl http://localhost:8080/api/health` → `{"status":"ok","database":"connected"}`.
+
+### Demonstrações
+
+```bash
+kubectl get pods -o wide -n estante
+kubectl get services -n estante
+kubectl get deployments -n estante
+```
+
+**Balanceamento de carga** — cada resposta do backend informa o Pod que a atendeu no header `X-Served-By`:
+
+```bash
+for i in $(seq 1 10); do curl -s -D - -o /dev/null localhost:8080/api/version | grep -i x-served-by; done
+```
+
+**Autocura** — apague um Pod e veja o Deployment criar outro:
+
+```bash
+kubectl -n estante get pods -w                              # terminal 1
+kubectl -n estante delete pod <nome-de-um-pod-backend>      # terminal 2
+```
+
+**Persistência** — apague o Pod do MySQL; os livros continuam após ele ser recriado:
+
+```bash
+kubectl -n estante delete pod -l app=mysql
+```
+
+**Escala:** `kubectl -n estante scale deployment backend --replicas=3`
+
+### Observações técnicas
+
+- A migração roda em um **Job** (`backend-migrate`). No Docker Compose a imagem executa `alembic upgrade head` ao iniciar; com 2 réplicas, as duas migrariam ao mesmo tempo.
+- `BACKEND_HOST` usa o nome completo `backend.estante.svc.cluster.local`: o resolver do Nginx não usa os domínios de busca do cluster e o nome curto gera 502.
+- `NGINX_RESOLVER` é o ClusterIP do kube-dns (`10.96.0.10`; confira com `kubectl -n kube-system get svc kube-dns`).
+- `imagePullPolicy: Never`: as imagens existem só dentro do Minikube, carregadas com `minikube image load`.
+
+### Limpar
+
+```bash
+kubectl delete namespace estante   # remove só a aplicação
+minikube delete                    # remove o cluster inteiro
+```
+
 ## Imagens Docker e versão implantada
 
 A cada merge na `main`, o pipeline publica as duas imagens no GHCR marcadas com
